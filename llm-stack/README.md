@@ -32,6 +32,9 @@ podman-compose version       # replace with the absolute path if not on PATH
    git clone <this-repo>
    cd gk-md-notes
    ```
+
+   > macOS helper: from the repo root you can run `./run-ollama-on-mac.sh` for a guided install. It performs the same pre-flight checks (RAM, Apple Silicon detection, Podman readiness), ensures Metal acceleration is enabled, and then launches the stack for you. Linux/Windows users can follow the manual `docker compose` steps below.
+
 2. **Start the services**
    ```bash
    docker compose up -d
@@ -87,6 +90,7 @@ Deleting them requires `docker compose down -v` (or the equivalent Podman comman
 
 ## Customization tips
 - Swap in any Ollama model tag (`phi3.5`, `llama3.2`, `codellama`, etc.) in the pull command.
+- Force GPU acceleration manually (e.g., Linux/NVIDIA) by prefixing `OLLAMA_USE_GPU=1` when you start the stack: `OLLAMA_USE_GPU=1 docker compose up -d` (or `podman compose up -d`). Apple Silicon users get Metal acceleration automatically when running `run-ollama-on-mac.sh` (which now provisions Podman for you).
 - To expose Open WebUI on another host/port, adjust the `ports` mapping and secure it with HTTPS or a reverse proxy.
 - NVIDIA GPU acceleration (Linux): install `nvidia-container-toolkit` and add the following under the `ollama` service in `docker-compose.yml`:
   ```yaml
@@ -100,6 +104,16 @@ Deleting them requires `docker compose down -v` (or the equivalent Podman comman
     - NVIDIA_VISIBLE_DEVICES=all
   ```
 - AMD/Intel GPU instructions follow the same pattern—consult the Ollama docs for the right environment variables.
+
+## Troubleshooting
+- **500: model requires more system memory (Apple Silicon/Podman)** – Podman’s default VM often allocates only 8 GB, which is not enough for GPU-backed loads (e.g., `phi3:mini`). Increase the Podman machine memory, then restart the stack:
+  ```bash
+  podman machine stop
+  podman machine set --memory 16   # bump to 16 GB or higher if you have headroom
+  podman machine start
+  ./manage-stack.sh start          # or rerun run-ollama-on-mac.sh
+  ```
+  If you still run out of memory, either raise the number further or force CPU inference with `OLLAMA_USE_GPU=0`.
 
 ## Cleanup / Uninstall
 Follow the sequence below if you need to remove everything (containers, images, volumes, and helper tools):
